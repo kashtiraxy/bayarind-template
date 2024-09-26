@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,8 +38,8 @@ func StringPrompt(label string) string {
 
 func GetPackage(i string) string {
 	listPackage := map[string]string{
-		"mysql":                      "gorm.io/driver/mysql",
-		"fiber":                      "github.com/gofiber/fiber/v2",
+		"MySQL":                      "gorm.io/driver/mysql",
+		"Fiber":                      "github.com/gofiber/fiber/v2",
 		"snap-validator":             "github.com/apelweb15/snap-validator",
 		"redis":                      "github.com/go-redis/redis/v8",
 		"resty":                      "github.com/go-resty/resty/v2",
@@ -98,6 +99,16 @@ func createFileWithContent(dirpath, fileName, content string) {
 }
 
 func main() {
+	logFileName := "app.log"
+
+	file, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	log.SetOutput(file)
+
 	projectName := StringPrompt("What is the name of the project?")
 
 	selectedTemplate := Checkboxes(
@@ -139,13 +150,14 @@ func main() {
 		},
 	)
 
-	allSelectedPackage := append(selectedOtherLib, selectedDatabase[0], selectedTemplate[0], selectedFramework[0])
+	fmt.Println(selectedTemplate)
+	allSelectedPackage := append(selectedOtherLib, selectedDatabase[0], selectedFramework[0])
 
 	cmd := exec.Command("cmd", "/C", fmt.Sprintf("go mod init %s", projectName))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("Error:", err)
-		fmt.Println("Output:", string(output))
+		log.Println("Error:", err)
+		log.Println("Output:", string(output))
 		return
 	}
 
@@ -153,12 +165,13 @@ func main() {
 		cmd := exec.Command("cmd", "/C", fmt.Sprintf("go get -u %s", GetPackage(v)))
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println("Error:", err)
-			fmt.Println("Output:", string(output))
+			log.Println("Error:", err)
+			log.Println("Output:", string(output))
 			return
 		}
 	}
 
+	fmt.Println("Generating Template....")
 	createFile(".", "Dockerfile")
 	createFile(".", "config.json")
 	createFile(".", "config.example.json")
@@ -177,4 +190,6 @@ func main() {
 	createFileWithContent("./internal/usecase/", "name_usecase.go", "package usecase")
 	createFileWithContent("./internal/usecase/", "name_usecase_impl.go", "package usecase")
 	createFileWithContent("./internal/utils/", "name_util.go", "package utils")
+	fmt.Println("Template Generated....")
+
 }
